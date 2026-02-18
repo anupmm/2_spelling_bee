@@ -25,6 +25,8 @@
             padding: 0.5rem 1rem;
             font-size: 1rem;
             cursor: pointer;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
         }
 
         #status {
@@ -42,11 +44,17 @@
             margin-bottom: 1rem;
             width: 100%;
         }
+
+        .secondary-actions {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ccc;
+        }
     </style>
 </head>
 
 <body>
-    <h1>Piper TTS Test (v3)</h1>
+    <h1>Piper TTS Test (v4)</h1>
 
     <p>Select a voice. Typed text will be synthesized.</p>
 
@@ -58,21 +66,32 @@
         <option value="en_US-ryan-medium">en_US-ryan-medium (Male)</option>
     </select>
 
-    <div style="margin-top: 20px;">
+    <div>
         <textarea id="textInput"
             placeholder="Type something to speak...">Hello! This is a test of Piper TTS in the browser.</textarea>
-        <button id="speakBtn">Speak</button>
+        <button id="speakBtn">Speak Text</button>
+    </div>
+
+    <div class="secondary-actions">
+        <h3>Data Test</h3>
+        <p>Fetch words from <code>curated_word_list.csv</code> and test random ones.</p>
+        <button id="test20Btn">Play 20 Random Words</button>
+        <button id="stopBtn" disabled>Stop</button>
     </div>
 
     <div id="status">Status: Ready. Click Speak.</div>
 
     <script type="module">
-        // Importing as a namespace to inspect what we get
         import * as piperModule from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.0/+esm';
 
         const statusEl = document.getElementById('status');
         const speakBtn = document.getElementById('speakBtn');
+        const test20Btn = document.getElementById('test20Btn');
+        const stopBtn = document.getElementById('stopBtn');
         const voiceSelect = document.getElementById('voiceSelect');
+
+        let abortController = null;
+        let isPlayingSequence = false;
 
         function log(msg) {
             statusEl.textContent = `Status: ${msg}`;
@@ -84,13 +103,50 @@
             console.log(msg);
         }
 
-        // Inspect the module
-        console.log('Imported module:', piperModule);
-
         // Determine the correct object to use
         let tts = piperModule.default || piperModule;
         if (tts && tts.default) {
-            tts = tts.default; // Handle double default if some bundlers go crazy?
+            tts = tts.default;
+        }
+
+        async function speakOnePhrase(text, voiceId) {
+            if (typeof tts.predict !== 'function') {
+                // Try to instantiate if needed (though user said avoid news)
+                try {
+                    const instance = new tts();
+                    if (instance && typeof instance.predict === 'function') {
+                        tts = instance;
+                    }
+                } catch (e) { }
+            }
+
+            if (typeof tts.predict !== 'function') {
+                throw new Error(`Cannot find predict method.`);
+            }
+
+            const audioBlob = await tts.predict({
+                text: text,
+                voiceId: voiceId,
+            });
+
+            return new Promise((resolve, reject) => {
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+
+                audio.onended = () => {
+                    resolve();
+                };
+                audio.onerror = (e) => reject(e);
+
+                // Allow stopping
+                audio.play().catch(reject);
+
+                // Check if we requested stop while generating
+                if (abortController && abortController.signal.aborted) {
+                    audio.pause();
+                    reject(new Error("Aborted"));
+                }
+            });
         }
 
         speakBtn.addEventListener('click', async () => {
@@ -100,54 +156,105 @@
             const voiceId = voiceSelect.value;
 
             speakBtn.disabled = true;
-            log("Initializing / Generating...");
-            appendLog(`Using keys: ${Object.keys(tts).join(', ')}`);
+            log("Generating single phrase...");
 
             try {
-                // Check for predict function
-                if (typeof tts.predict !== 'function') {
-                    // Maybe it IS a class and we need to instantiate it? 
-                    // But user said "Avoid new PiperTTS() if it's not a class".
-                    // Let's check constructor.
-                    try {
-                        const instance = new tts();
-                        if (instance && typeof instance.predict === 'function') {
-                            tts = instance;
-                            appendLog("Instantiated class successfully.");
-                        }
-                    } catch (e) {
-                        // Not a class or constructor failed
-                        appendLog("Not a constructor or instantiation failed.");
+                await speakOnePhrase(text, voiceId);
+                log("Done.");
+            } catch (err) {
+                log(`Error: ${err.message}`);
+                console.error(err);
+            } finally {
+                speakBtn.disabled = false;
+            }
+        });
+
+        test20Btn.addEventListener('click', async () => {
+            if (isPlayingSequence) return;
+
+            const voiceId = voiceSelect.value;
+            test20Btn.disabled = true;
+            stopBtn.disabled = false;
+            isPlayingSequence = true;
+            abortController = new AbortController();
+
+            log("Fetching CSV...");
+
+            try {
+                const response = await fetch('curated_word_list.csv');
+                if (!response.ok) throw new Error("Failed to load CSV");
+                const text = await response.text();
+
+                // Simple Parse
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                // Assume header is first line
+                const headers = lines[0].split(',');
+                const wordsIndex = headers.findIndex(h => h.trim() === 'Words');
+
+                if (wordsIndex === -1) throw new Error("Could not find 'Words' column in CSV");
+
+                const words = [];
+                for (let i = 1; i < lines.length; i++) {
+                    // Handle basic CSV parsing (ignoring complex quotes for now as per app.js example is simpler)
+                    // Actually app.js has a robust parser. We'll do a simple split and hope no commas in words for now
+                    // OR better, reuse the regex idea if possible, but let's stick to simple split if the file is simple.
+                    // The file has "2025-2026,Two Bee,hesitate" - no commas in words usually.
+                    // Exception: "artifacts; artefacts" has semicolon.
+                    const cols = lines[i].split(',');
+                    if (cols.length > wordsIndex) {
+                        const rawWord = cols[wordsIndex].trim();
+                        // Take first variant if semicolon
+                        let cleanWord = rawWord.split(';')[0].trim();
+                        if (cleanWord) words.push(cleanWord);
                     }
                 }
 
-                if (typeof tts.predict !== 'function') {
-                    throw new Error(`Cannot find predict method. Exports: ${Object.keys(piperModule).join(', ')}`);
+                if (words.length === 0) throw new Error("No words found.");
+
+                // Pick 20 random
+                const selected = [];
+                for (let i = 0; i < 20; i++) {
+                    const r = Math.floor(Math.random() * words.length);
+                    selected.push(words[r]);
                 }
 
-                const audioBlob = await tts.predict({
-                    text: text,
-                    voiceId: voiceId,
-                });
+                log(`Selected 20 words: ${selected.slice(0, 3).join(', ')}...`);
+                appendLog("(Playing 1 by 1. Click Stop to cancel.)");
 
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
+                for (const [index, word] of selected.entries()) {
+                    if (abortController.signal.aborted) break;
 
-                log("Playing...");
-                audio.play();
+                    log(`[${index + 1}/20] Speaking: "${word}"`);
+                    await speakOnePhrase(word, voiceId);
 
-                audio.onended = () => {
-                    log("Done.");
-                    speakBtn.disabled = false;
-                };
+                    // Small pause
+                    await new Promise(r => setTimeout(r, 500));
+                }
+
+                if (!abortController.signal.aborted) {
+                    log("Finished 20 words.");
+                } else {
+                    log("Stopped.");
+                }
 
             } catch (err) {
                 log(`Error: ${err.message}`);
                 console.error(err);
-                appendLog(JSON.stringify(err, Object.getOwnPropertyNames(err)));
-                speakBtn.disabled = false;
+            } finally {
+                isPlayingSequence = false;
+                test20Btn.disabled = false;
+                stopBtn.disabled = true;
+                abortController = null;
             }
         });
+
+        stopBtn.addEventListener('click', () => {
+            if (abortController) {
+                abortController.abort();
+                log("Stopping...");
+            }
+        });
+
     </script>
 </body>
 
