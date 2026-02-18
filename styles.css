@@ -165,7 +165,6 @@ details summary {
 /* Color coding for emojis */
 .emoji-happy {
   /* Correct - Green */
-  grid-column: span 2;
   background-color: #d1fae5;
   border-color: #10b981;
   color: #065f46;
@@ -179,10 +178,17 @@ details summary {
 }
 
 .emoji-worried {
-  /* Forgot - Red */
+  /* Don't Know - Red */
   background-color: #fee2e2;
   border-color: #ef4444;
   color: #991b1b;
+}
+
+.emoji-neutral {
+  /* Couldn't Hear - Blue/Gray */
+  background-color: #e0f2fe;
+  border-color: #0ea5e9;
+  color: #075985;
 }
 
 .word-card {
@@ -229,7 +235,7 @@ details summary {
   /* Fixed height for compactness */
   border-radius: 12px;
   font-size: 1.3rem;
-  /* Increased from 1.1rem to match Reveal */
+  /* Matched to Reveal */
   font-weight: 800;
   display: flex;
   flex-direction: row;
@@ -238,9 +244,12 @@ details summary {
   justify-content: center;
   gap: 12px;
   /* Increased gap */
-  border: 3px solid #111;
+  border: none;
+  /* Removed heavy border */
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
   transition: all 0.1s;
+  color: white;
+  /* Unified text color */
 }
 
 .play-btn:active,
@@ -251,12 +260,13 @@ details summary {
 
 .play-btn {
   background: #111;
-  color: #fff;
+  /* Keep black for play */
 }
 
 #slowBtn {
-  background: #fff;
-  color: #111;
+  background: #005d72;
+  /* Use primary color or distinct color for slow */
+  color: white;
 }
 
 .audio-actions {

@@ -63,6 +63,7 @@ function cacheUi() {
 
   ui.forgotBtn = document.getElementById("forgotBtn");
   ui.wrongBtn = document.getElementById("wrongBtn");
+  ui.hearBtn = document.getElementById("hearBtn");
   ui.correctBtn = document.getElementById("correctBtn");
 
   ui.stageNext = document.getElementById("stageNext"); // Kept just to ensure no null ref errors, though hidden
@@ -92,14 +93,15 @@ function bindEvents() {
 
   // Play button repeats if already conducting word
   ui.playBtn.addEventListener("click", () => speakCurrentWord(1));
-  ui.slowBtn.addEventListener("click", () => speakCurrentWord(0.75));
+  ui.slowBtn.addEventListener("click", () => speakCurrentWord(0.5));
 
   // ui.startBtn removed
 
   ui.revealBtn.addEventListener("click", onReveal);
 
-  ui.forgotBtn.addEventListener("click", () => scoreCurrentWord("forgot"));
-  ui.wrongBtn.addEventListener("click", () => scoreCurrentWord("wrong"));
+  ui.forgotBtn.addEventListener("click", () => scoreCurrentWord("incorrect"));
+  ui.wrongBtn.addEventListener("click", () => scoreCurrentWord("incorrect"));
+  ui.hearBtn.addEventListener("click", () => scoreCurrentWord("incorrect"));
   ui.correctBtn.addEventListener("click", () => scoreCurrentWord("correct"));
 
   ui.historyFilter.addEventListener("change", renderHistory);
@@ -527,6 +529,7 @@ function renderUiState() {
 
   ui.forgotBtn.disabled = step !== STEPS.REVEALED_NEEDS_SCORE;
   ui.wrongBtn.disabled = step !== STEPS.REVEALED_NEEDS_SCORE;
+  ui.hearBtn.disabled = step !== STEPS.REVEALED_NEEDS_SCORE;
   ui.correctBtn.disabled = step !== STEPS.REVEALED_NEEDS_SCORE;
 
   setActiveStage(step);
