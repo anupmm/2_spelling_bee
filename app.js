@@ -530,8 +530,22 @@ function renderUiState() {
   ui.correctBtn.disabled = step !== STEPS.REVEALED_NEEDS_SCORE;
 
   setActiveStage(step);
-  // renderRevealText() is called explicitly in onReveal, but also here for persistence?
-  // We actually only want to show it if we are in REVEALED state.
+
+  // Toggle audio controls visibility within stageListen
+  // The audio-box is inside stageListen. 
+  // We want audio controls visible during SPOKEN_WAIT_CHOICE.
+  // We want them HIDDEN during REVEALED_NEEDS_SCORE (to focus on word).
+  // But wait, stageListen is HIDDEN during REVEALED_NEEDS_SCORE by setActiveStage.
+  // So if stageListen is hidden, audio-box is hidden. 
+  // The user says "How did you do" appears on initial screen.
+  // Initial screen = IDLE. 
+  // In IDLE, stageListen is hidden (step !== SPOKEN_WAIT_CHOICE).
+  // stageScore is hidden (step !== REVEALED_NEEDS_SCORE).
+  // So nothing should be visible except the header/nav.
+
+  // If the user sees options, maybe step IS REVEALED_NEEDS_SCORE on load?
+  // loading from localStorage?
+
   if (step === STEPS.REVEALED_NEEDS_SCORE) {
     const word = getCurrentWord();
     if (word) {
@@ -542,15 +556,19 @@ function renderUiState() {
       }
     }
   } else {
+    // Only clear if we are NOT in REVEALED state. 
+    // If we are in SPOKEN state, we want to hide spelling.
     ui.revealSpelling.textContent = "";
   }
 }
 
 function setActiveStage(step) {
   // ui.stageStart removed
+  // stageListen should be active in SPOKEN_WAIT_CHOICE
   ui.stageListen.classList.toggle("is-active", step === STEPS.SPOKEN_WAIT_CHOICE);
+
+  // stageScore should be active in REVEALED_NEEDS_SCORE
   ui.stageScore.classList.toggle("is-active", step === STEPS.REVEALED_NEEDS_SCORE);
-  // ui.stageNext.classList.toggle("is-active", step === STEPS.SCORED_READY_NEXT); // Removed
 }
 
 function renderRevealText() {

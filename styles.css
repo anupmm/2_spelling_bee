@@ -115,7 +115,8 @@ details summary {
 /* Big Reveal Button */
 .reveal-btn {
   width: 100%;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  /* Matched to Play/Slow buttons */
   padding: 16px;
   background-color: #6200ee;
   color: white;
@@ -227,14 +228,16 @@ details summary {
   height: 60px;
   /* Fixed height for compactness */
   border-radius: 12px;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
+  /* Increased from 1.1rem to match Reveal */
   font-weight: 800;
   display: flex;
   flex-direction: row;
   /* Horizontal layout */
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
+  /* Increased gap */
   border: 3px solid #111;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
   transition: all 0.1s;
@@ -261,9 +264,112 @@ details summary {
   /* Let slow button sit in the main grid */
 }
 
+/* Make emojis inside Play/Slow buttons larger */
+.play-btn span:first-child {
+  font-size: 1.8rem;
+}
+
 /* Hide the old grid adjustments that might conflict */
 @media (min-width: 600px) {
   .setup-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+.stage {
+  display: none;
+  margin-top: 12px;
+}
+
+.stage.is-active {
+  display: block;
+}
+
+.stage-title {
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.choice-box,
+.score-box {
+  background: var(--card);
+}
+
+.stats {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.stat span {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.history-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+#historyList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 7px;
+}
+
+.result-correct {
+  color: #1f6942;
+  font-weight: 800;
+}
+
+.result-incorrect {
+  color: #a23e21;
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .emoji-grid,
+  .score-grid,
+  .audio-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 760px) {
+  .app {
+    padding: 20px;
+    gap: 14px;
+  }
+
+  .setup-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .setup-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Removed .audio-box override to keep 1fr 1fr layout on desktop */
 }
