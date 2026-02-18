@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piper TTS Test</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        #status {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        select {
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Piper TTS Test</h1>
+
+    <p>Select a voice and click "Init Voice". Then type text and click "Speak".</p>
+
+    <select id="voiceSelect">
+        <!-- Using High Quality English US voices -->
+        <option value="en_US-lessac-medium">en_US-lessac-medium (Female)</option>
+        <option value="en_US-lessac-high">en_US-lessac-high (Female)</option>
+        <option value="en_US-amy-medium">en_US-amy-medium (Female)</option>
+        <option value="en_US-danny-low">en_US-danny-low (Male)</option>
+        <option value="en_US-ryan-medium">en_US-ryan-medium (Male)</option>
+    </select>
+    <button id="initBtn">Init Voice / Load Model</button>
+
+    <div style="margin-top: 20px;">
+        <textarea id="textInput"
+            placeholder="Type something to speak...">Hello! This is a test of Piper TTS in the browser.</textarea>
+        <button id="speakBtn" disabled>Speak</button>
+    </div>
+
+    <div id="status">Status: Waiting for initialization...</div>
+
+    <script type="module">
+        import tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.0/+esm';
+
+        let piper;
+        const statusEl = document.getElementById('status');
+        const initBtn = document.getElementById('initBtn');
+        const speakBtn = document.getElementById('speakBtn');
+        const voiceSelect = document.getElementById('voiceSelect');
+
+        function log(msg) {
+            statusEl.textContent = `Status: ${msg}`;
+            console.log(msg);
+        }
+
+        initBtn.addEventListener('click', async () => {
+            initBtn.disabled = true;
+            voiceSelect.disabled = true;
+            speakBtn.disabled = true;
+            log("Initializing Piper...");
+
+            try {
+                // Create a new Piper instance
+                // We use the CDN for the heavy lifting
+                piper = new tts({
+                    logger: (msg) => console.log('Piper Log:', msg),
+                    // Point to a CDN that hosts the onnxruntime wasm if needed, 
+                    // usually the library handles defaults or we might need to specify paths if it fails.
+                });
+
+                const voiceId = voiceSelect.value;
+                const modelBaseUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/${voiceId.split('-')[1]}/${voiceId.split('-')[2]}`;
+
+                // Construct URLs for the specific voice
+                const modelUrl = `${modelBaseUrl}/${voiceId}.onnx`;
+                const configUrl = `${modelBaseUrl}/${voiceId}.onnx.json`;
+
+                log(`Loading model: ${voiceId}... This make take a minute.`);
+
+                // The library typically expects a callback or method to load.
+                // Based on common usage of this wrapper:
+                await piper.init({
+                    url: modelUrl,
+                    configUrl: configUrl,
+                    // onProgress: (percent) => log(`Loading: ${percent.toFixed(0)}%`)
+                });
+
+                log("Piper ready!");
+                speakBtn.disabled = false;
+                initBtn.disabled = false;
+                voiceSelect.disabled = false;
+
+            } catch (err) {
+                log(`Error: ${err.message}`);
+                console.error(err);
+                initBtn.disabled = false;
+                voiceSelect.disabled = false;
+            }
+        });
+
+        speakBtn.addEventListener('click', async () => {
+            const text = document.getElementById('textInput').value;
+            if (!text) return;
+
+            speakBtn.disabled = true;
+            log("Generating audio...");
+
+            try {
+                const audioBlob = await piper.speak({ text });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+
+                log("Playing...");
+                audio.play();
+
+                audio.onended = () => {
+                    log("Done playing.");
+                    speakBtn.disabled = false;
+                };
+            } catch (err) {
+                log(`Speak Error: ${err.message}`);
+                speakBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>
