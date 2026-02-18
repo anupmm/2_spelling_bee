@@ -1,0 +1,145 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spelling Bee Practice</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <main class="app">
+    <header class="panel hero">
+      <h1>Spelling Bee Practice</h1>
+      <p id="statusMessage">Loading word list...</p>
+    </header>
+
+    <nav class="panel tabs" aria-label="Main tabs">
+      <button type="button" class="tab-btn" data-tab="filters">Filters</button>
+      <button type="button" class="tab-btn is-active" data-tab="practice">Practice</button>
+      <button type="button" class="tab-btn" data-tab="score">Score</button>
+      <button type="button" class="tab-btn" data-tab="history">History</button>
+    </nav>
+
+    <section id="tab-filters" class="panel tab-panel">
+      <details id="filtersDetails" open>
+        <summary>Word Selection</summary>
+        <div class="setup-grid">
+          <label>
+            Year
+            <select id="yearFilter"></select>
+          </label>
+          <label>
+            Level
+            <select id="levelFilter"></select>
+          </label>
+          <label>
+            Voice
+            <div class="voice-controls">
+              <select id="voiceSelect"></select>
+              <button id="testVoiceBtn" type="button" class="btn-secondary" aria-label="Test selected voice">🔊
+                Test</button>
+            </div>
+          </label>
+        </div>
+        <div class="setup-actions">
+          <button id="applyFiltersBtn" type="button" class="btn-primary">Apply Filters</button>
+          <button id="resetFilterProgressBtn" type="button" class="btn-danger">Reset Filter Progress</button>
+        </div>
+      </details>
+      <p id="activeFilterSummary" class="filter-summary">No filters selected yet.</p>
+    </section>
+
+    <section id="tab-practice" class="panel tab-panel is-active">
+      <div class="word-card">
+        <div id="wordMeta" class="word-meta">Word #</div>
+        <div class="word-prompt">Tap play, then choose your smiley path.</div>
+        <div id="revealSpelling" class="reveal-spelling"></div>
+      </div>
+
+      <div id="stageListen" class="stage">
+        <div class="panel audio-box inner-panel">
+          <button id="playBtn" type="button" class="play-btn" aria-label="Play word">
+            <span>▶️</span>
+            <span>Play</span>
+          </button>
+          <div class="audio-actions">
+            <button id="slowBtn" type="button">
+              <span>🐢</span>
+              <span>Slow</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel choice-box inner-panel">
+          <button id="revealBtn" type="button" class="btn-primary reveal-btn">👀 Show Spelling</button>
+        </div>
+      </div>
+
+      <div id="stageScore" class="stage">
+        <div class="panel score-box inner-panel">
+          <p class="stage-title">How did you do?</p>
+          <div class="score-grid">
+            <button id="forgotBtn" type="button" class="emoji-btn emoji-worried">
+              <span class="emoji">😔</span>
+              <span class="label">Forgot</span>
+            </button>
+            <button id="wrongBtn" type="button" class="emoji-btn emoji-confused">
+              <span class="emoji">😕</span>
+              <span class="label">Wrong</span>
+            </button>
+            <button id="correctBtn" type="button" class="emoji-btn emoji-happy">
+              <span class="emoji">😃</span>
+              <span class="label">Correct</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- stageNext removed, we auto-advance now -->
+      <div id="stageNext" class="stage" style="display:none;"></div>
+    </section>
+
+    <section id="tab-score" class="panel tab-panel">
+      <h2>Score Snapshot</h2>
+      <div class="stats">
+        <div class="stat">
+          <span id="attemptCount">0</span>
+          <small>Attempts</small>
+        </div>
+        <div class="stat">
+          <span id="accuracyStat">0%</span>
+          <small>Correct</small>
+        </div>
+        <div class="stat">
+          <span id="missedCount">0</span>
+          <small>Missed</small>
+        </div>
+        <div class="stat">
+          <span id="remainingCount">0</span>
+          <small>Remaining</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-history" class="panel tab-panel history">
+      <div class="history-top">
+        <h2>Recent Attempts</h2>
+        <label>
+          Show
+          <select id="historyFilter">
+            <option value="all">All</option>
+            <option value="correct">Correct</option>
+            <option value="incorrect">Incorrect</option>
+          </select>
+        </label>
+      </div>
+      <ul id="historyList"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,269 @@
+﻿:root {
+  --bg-1: #ffe76a;
+  --bg-2: #ffd423;
+  --panel: #ffdf31cc;
+  --card: #ffef8a;
+  --text: #111111;
+  --muted: #4a4a4a;
+  --line: #1f1f1f33;
+  --button: #111111;
+  --button-text: #ffffff;
+  --danger: #d4542f;
+  --success: #2d8f5a;
+  --primary: #005d72;
+  --primary-strong: #004454;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 20% 10%, #fff196 0 18%, transparent 40%),
+    linear-gradient(165deg, var(--bg-1) 0%, var(--bg-2) 100%);
+}
+
+.app {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 22px;
+  padding: 14px;
+  backdrop-filter: blur(2px);
+}
+
+.inner-panel {
+  border-radius: 18px;
+  margin-top: 12px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 2vw + 1rem, 2.5rem);
+  margin-bottom: 6px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+.tab-btn {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 2px solid #00000044;
+  background: #fff4b5;
+  color: #111111;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tab-btn.is-active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary-strong);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.is-active {
+  display: block;
+}
+
+details summary {
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.setup-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.setup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Big Reveal Button */
+.reveal-btn {
+  width: 100%;
+  font-size: 1.2rem;
+  padding: 16px;
+  background-color: #6200ee;
+  color: white;
+  border-radius: 12px;
+}
+
+/* Score Emoji Grid */
+.score-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.emoji-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 4px solid transparent;
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 120px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+.emoji-btn:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.emoji-btn .emoji {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.emoji-btn .label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111;
+}
+
+/* Color coding for emojis */
+.emoji-happy {
+  /* Correct - Green */
+  grid-column: span 2;
+  background-color: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.emoji-confused {
+  /* Wrong - Yellow */
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.emoji-worried {
+  /* Forgot - Red */
+  background-color: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.word-card {
+  text-align: center;
+  padding: 10px;
+}
+
+.word-meta {
+  font-size: 1.2rem;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.word-prompt {
+  display: none;
+  /* Hide prompt to clean up UI */
+}
+
+.reveal-spelling {
+  margin-top: 10px;
+  min-height: 1.5em;
+  font-size: clamp(2.5rem, 5vw + 1rem, 4rem);
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  color: #000;
+  text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.5);
+}
+
+.audio-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background: var(--card);
+  padding: 12px;
+  border-radius: 18px;
+}
+
+.play-btn,
+#slowBtn {
+  width: 100%;
+  height: 60px;
+  /* Fixed height for compactness */
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  display: flex;
+  flex-direction: row;
+  /* Horizontal layout */
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 3px solid #111;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+  transition: all 0.1s;
+}
+
+.play-btn:active,
+#slowBtn:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.play-btn {
+  background: #111;
+  color: #fff;
+}
+
+#slowBtn {
+  background: #fff;
+  color: #111;
+}
+
+.audio-actions {
+  display: contents;
+  /* Let slow button sit in the main grid */
+}
+
+/* Hide the old grid adjustments that might conflict */
+@media (min-width: 600px) {
+  .setup-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
