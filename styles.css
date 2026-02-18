@@ -357,7 +357,6 @@ details summary {
   }
 
   .emoji-grid,
-  .score-grid,
   .audio-actions {
     grid-template-columns: 1fr;
   }
