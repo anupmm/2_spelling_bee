@@ -33,6 +33,8 @@
             background: #f0f0f0;
             border-radius: 4px;
             font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
 
         select {
@@ -44,34 +46,31 @@
 </head>
 
 <body>
-    <h1>Piper TTS Test</h1>
+    <h1>Piper TTS Test (v3)</h1>
 
-    <p>Select a voice and click "Init Voice". Then type text and click "Speak".</p>
+    <p>Select a voice. Typed text will be synthesized.</p>
 
     <select id="voiceSelect">
-        <!-- Using High Quality English US voices -->
         <option value="en_US-lessac-medium">en_US-lessac-medium (Female)</option>
         <option value="en_US-lessac-high">en_US-lessac-high (Female)</option>
         <option value="en_US-amy-medium">en_US-amy-medium (Female)</option>
         <option value="en_US-danny-low">en_US-danny-low (Male)</option>
         <option value="en_US-ryan-medium">en_US-ryan-medium (Male)</option>
     </select>
-    <button id="initBtn">Init Voice / Load Model</button>
 
     <div style="margin-top: 20px;">
         <textarea id="textInput"
             placeholder="Type something to speak...">Hello! This is a test of Piper TTS in the browser.</textarea>
-        <button id="speakBtn" disabled>Speak</button>
+        <button id="speakBtn">Speak</button>
     </div>
 
-    <div id="status">Status: Waiting for initialization...</div>
+    <div id="status">Status: Ready. Click Speak.</div>
 
     <script type="module">
-        import tts from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.0/+esm';
+        // Importing as a namespace to inspect what we get
+        import * as piperModule from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.0/+esm';
 
-        let piper;
         const statusEl = document.getElementById('status');
-        const initBtn = document.getElementById('initBtn');
         const speakBtn = document.getElementById('speakBtn');
         const voiceSelect = document.getElementById('voiceSelect');
 
@@ -80,60 +79,57 @@
             console.log(msg);
         }
 
-        initBtn.addEventListener('click', async () => {
-            initBtn.disabled = true;
-            voiceSelect.disabled = true;
-            speakBtn.disabled = true;
-            log("Initializing Piper...");
+        function appendLog(msg) {
+            statusEl.textContent += `\n${msg}`;
+            console.log(msg);
+        }
 
-            try {
-                // Create a new Piper instance
-                // We use the CDN for the heavy lifting
-                piper = new tts({
-                    logger: (msg) => console.log('Piper Log:', msg),
-                    // Point to a CDN that hosts the onnxruntime wasm if needed, 
-                    // usually the library handles defaults or we might need to specify paths if it fails.
-                });
+        // Inspect the module
+        console.log('Imported module:', piperModule);
 
-                const voiceId = voiceSelect.value;
-                const modelBaseUrl = `https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/${voiceId.split('-')[1]}/${voiceId.split('-')[2]}`;
-
-                // Construct URLs for the specific voice
-                const modelUrl = `${modelBaseUrl}/${voiceId}.onnx`;
-                const configUrl = `${modelBaseUrl}/${voiceId}.onnx.json`;
-
-                log(`Loading model: ${voiceId}... This make take a minute.`);
-
-                // The library typically expects a callback or method to load.
-                // Based on common usage of this wrapper:
-                await piper.init({
-                    url: modelUrl,
-                    configUrl: configUrl,
-                    // onProgress: (percent) => log(`Loading: ${percent.toFixed(0)}%`)
-                });
-
-                log("Piper ready!");
-                speakBtn.disabled = false;
-                initBtn.disabled = false;
-                voiceSelect.disabled = false;
-
-            } catch (err) {
-                log(`Error: ${err.message}`);
-                console.error(err);
-                initBtn.disabled = false;
-                voiceSelect.disabled = false;
-            }
-        });
+        // Determine the correct object to use
+        let tts = piperModule.default || piperModule;
+        if (tts && tts.default) {
+            tts = tts.default; // Handle double default if some bundlers go crazy?
+        }
 
         speakBtn.addEventListener('click', async () => {
             const text = document.getElementById('textInput').value;
             if (!text) return;
 
+            const voiceId = voiceSelect.value;
+
             speakBtn.disabled = true;
-            log("Generating audio...");
+            log("Initializing / Generating...");
+            appendLog(`Using keys: ${Object.keys(tts).join(', ')}`);
 
             try {
-                const audioBlob = await piper.speak({ text });
+                // Check for predict function
+                if (typeof tts.predict !== 'function') {
+                    // Maybe it IS a class and we need to instantiate it? 
+                    // But user said "Avoid new PiperTTS() if it's not a class".
+                    // Let's check constructor.
+                    try {
+                        const instance = new tts();
+                        if (instance && typeof instance.predict === 'function') {
+                            tts = instance;
+                            appendLog("Instantiated class successfully.");
+                        }
+                    } catch (e) {
+                        // Not a class or constructor failed
+                        appendLog("Not a constructor or instantiation failed.");
+                    }
+                }
+
+                if (typeof tts.predict !== 'function') {
+                    throw new Error(`Cannot find predict method. Exports: ${Object.keys(piperModule).join(', ')}`);
+                }
+
+                const audioBlob = await tts.predict({
+                    text: text,
+                    voiceId: voiceId,
+                });
+
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
 
@@ -141,11 +137,14 @@
                 audio.play();
 
                 audio.onended = () => {
-                    log("Done playing.");
+                    log("Done.");
                     speakBtn.disabled = false;
                 };
+
             } catch (err) {
-                log(`Speak Error: ${err.message}`);
+                log(`Error: ${err.message}`);
+                console.error(err);
+                appendLog(JSON.stringify(err, Object.getOwnPropertyNames(err)));
                 speakBtn.disabled = false;
             }
         });
