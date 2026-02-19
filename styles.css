@@ -197,10 +197,12 @@ details summary {
 }
 
 .word-meta {
-  font-size: 1.2rem;
-  color: var(--muted);
-  font-weight: 700;
-  margin-bottom: 4px;
+  font-size: 1.5rem;
+  color: var(--text);
+  /* Darker than muted */
+  font-weight: 800;
+  margin-bottom: 8px;
+  opacity: 0.8;
 }
 
 .word-prompt {
@@ -211,12 +213,73 @@ details summary {
 .reveal-spelling {
   margin-top: 10px;
   min-height: 1.5em;
-  font-size: clamp(2.5rem, 5vw + 1rem, 4rem);
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-size: clamp(3rem, 6vw + 1rem, 5rem);
+  font-weight: 900;
+  letter-spacing: 2px;
   line-height: 1.1;
-  color: #000;
-  text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.5);
+  color: #2b2b2b;
+  /* 3D Look */
+  text-shadow:
+    0 1px 0 #ccc,
+    0 2px 0 #c9c9c9,
+    0 3px 0 #bbb,
+    0 4px 0 #b9b9b9,
+    0 5px 0 #aaa,
+    0 6px 1px rgba(0, 0, 0, .1),
+    0 0 5px rgba(0, 0, 0, .1),
+    0 1px 3px rgba(0, 0, 0, .3),
+    0 3px 5px rgba(0, 0, 0, .2),
+    0 5px 10px rgba(0, 0, 0, .25);
+  transform: translateY(-2px);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.result-correct {
+  color: #1f6942;
+  font-weight: 800;
+}
+
+/* Celebration Animation */
+@keyframes celebrate {
+  0% {
+    transform: scale(1);
+  }
+
+  20% {
+    transform: scale(1.1) rotate(3deg);
+  }
+
+  40% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+
+  60% {
+    transform: scale(1.1) rotate(3deg);
+  }
+
+  80% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.celebrating .app {
+  animation: celebrate 1.5s ease-in-out;
+}
+
+.celebrating .reveal-spelling {
+  color: var(--success);
+  text-shadow:
+    0 1px 0 #185c39,
+    0 2px 0 #144f31,
+    0 3px 0 #114229,
+    0 6px 1px rgba(0, 0, 0, .1),
+    0 0 5px rgba(0, 0, 0, .1),
+    0 1px 3px rgba(0, 0, 0, .3);
+  transform: scale(1.2);
 }
 
 .audio-box {

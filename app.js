@@ -101,8 +101,9 @@ function bindEvents() {
   ui.testVoiceBtn.addEventListener("click", testSelectedVoice);
 
   // Play button repeats if already conducting word
+  // Play button repeats if already conducting word
   ui.playBtn.addEventListener("click", () => speakCurrentWord(1));
-  ui.slowBtn.addEventListener("click", () => speakCurrentWord(0.5));
+  ui.slowBtn.addEventListener("click", () => speakCurrentWord(0.2));
 
   // ui.startBtn removed
 
@@ -436,14 +437,21 @@ function finalizeAttempt(result) {
   renderHistory();
 
   // Auto-advance
-  // We can show a brief "Got it!" message if we want, but user asked for speed.
-  // Let's just go straight to next word.
-  setStatus(isCorrect ? "Correct! Next word..." : "Saved. Next word...", isCorrect ? "success" : "info");
-
-  // Small delay so they see they clicked it, then next
-  setTimeout(() => {
-    nextWord();
-  }, 400);
+  if (isCorrect) {
+    setStatus("Correct!", "success");
+    document.body.classList.add("celebrating");
+    // Celebrate for 2 seconds
+    setTimeout(() => {
+      document.body.classList.remove("celebrating");
+      nextWord();
+    }, 2000);
+  } else {
+    setStatus("Saved. Next word...", "info");
+    // Small delay so they see they clicked it, then next
+    setTimeout(() => {
+      nextWord();
+    }, 400);
+  }
 }
 
 function scheduleRemediation(wordId) {
