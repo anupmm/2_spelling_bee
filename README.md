@@ -20,7 +20,7 @@ Then open:
 - CSV parsing (`Year`, `Level`, `Words`) with `;` spelling variants.
 - Filter by year and level.
 - Practice state machine with gated buttons.
-- TTS via browser speech API (`Hear Again`, `Hear Slower`).
+- Piper TTS (High Quality) with fallback to browser speech API (`Hear Again`, `Hear Slower`).
 - Non-repeat selection by filter plus minimal incorrect-word remediation queue.
 - Local storage schema versioning (`schemaVersion = 1`).
 - Recent attempts list and basic stats.

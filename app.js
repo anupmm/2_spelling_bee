@@ -1,4 +1,6 @@
-﻿const STORAGE_KEY = "spelling_bee_app_state";
+﻿import * as piperModule from 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.0/+esm';
+
+const STORAGE_KEY = "spelling_bee_app_state";
 const SCHEMA_VERSION = 1;
 
 const STEPS = {
@@ -18,6 +20,8 @@ const runtime = {
   lastWordId: null,
   activeTab: "practice",
   hasAppliedFilters: false,
+  ttsEngine: "piper", // "piper" or "browser"
+  piperInstance: null,
 };
 
 let storageReadOnly = false;
@@ -47,6 +51,7 @@ function cacheUi() {
 
   ui.yearFilter = document.getElementById("yearFilter");
   ui.levelFilter = document.getElementById("levelFilter");
+  ui.ttsEngineSelect = document.getElementById("ttsEngineSelect");
   ui.voiceSelect = document.getElementById("voiceSelect");
   ui.testVoiceBtn = document.getElementById("testVoiceBtn");
   ui.applyFiltersBtn = document.getElementById("applyFiltersBtn");
@@ -89,6 +94,10 @@ function bindEvents() {
 
   ui.applyFiltersBtn.addEventListener("click", applyFilters);
   ui.resetFilterProgressBtn.addEventListener("click", resetFilterProgress);
+  ui.ttsEngineSelect.addEventListener("change", (e) => {
+    runtime.ttsEngine = e.target.value;
+    refreshVoiceList();
+  });
   ui.testVoiceBtn.addEventListener("click", testSelectedVoice);
 
   // Play button repeats if already conducting word
@@ -659,7 +668,77 @@ function speakCurrentWord(rate) {
   speakText(word.displaySpelling, rate);
 }
 
-function speakText(text, rate) {
+async function speakText(text, rate) {
+  if (runtime.ttsEngine === "piper") {
+    await speakWithPiper(text);
+  } else {
+    speakWithBrowser(text, rate);
+  }
+}
+
+async function speakWithPiper(text) {
+  try {
+    let tts = runtime.piperInstance;
+
+    if (!tts) {
+      // Lazy load / Init logic matched to piper_test.html
+      setStatus("Initializing High Quality Voice...", "info");
+
+      let storedModule = piperModule.default || piperModule;
+      if (storedModule && storedModule.default) {
+        storedModule = storedModule.default;
+      }
+
+      // Check if it's already an instance or needs instantiation
+      if (typeof storedModule.predict === 'function') {
+        tts = storedModule;
+      } else {
+        try {
+          tts = new storedModule();
+        } catch (e) {
+          console.warn("Could not instantiate piper module, trying raw object", e);
+          tts = storedModule;
+        }
+      }
+
+      if (typeof tts.predict !== 'function') {
+        // Final attempt: maybe it's nested differently?
+        throw new Error("Piper module does not export a predict function.");
+      }
+
+      runtime.piperInstance = tts;
+    }
+
+    const voiceId = ui.voiceSelect.value;
+
+    // Show spinner or loading state if needed
+    // setStatus("Generating...", "info"); 
+
+    const audioBlob = await tts.predict({
+      text: text,
+      voiceId: voiceId,
+    });
+
+    return new Promise((resolve, reject) => {
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => resolve();
+      audio.onerror = (e) => reject(e);
+      audio.play().catch(reject);
+    });
+
+  } catch (err) {
+    console.error("Piper Error:", err);
+    setStatus(`High Quality Voice failed: ${err.message}. Switching to Browser Default.`, "error");
+    // Fallback
+    runtime.ttsEngine = "browser";
+    ui.ttsEngineSelect.value = "browser";
+    refreshVoiceList();
+    speakWithBrowser(text, 1);
+  }
+}
+
+function speakWithBrowser(text, rate) {
   if (!("speechSynthesis" in window)) {
     setStatus("This browser does not support speech audio.", "error");
     return;
@@ -684,51 +763,82 @@ function speakText(text, rate) {
   window.speechSynthesis.speak(utterance);
 }
 
+// Piper Voices Data
+const PIPER_VOICES = [
+  { name: "Amy (Female)", id: "en_US-amy-medium" },
+  { name: "Lessac (Female - Medium)", id: "en_US-lessac-medium" },
+  { name: "Lessac (Female - High)", id: "en_US-lessac-high" },
+  { name: "Danny (Male)", id: "en_US-danny-low" },
+  { name: "Ryan (Male)", id: "en_US-ryan-medium" },
+];
+
 function initVoices() {
+  // Check if browser supports speech for fallback
   if (!("speechSynthesis" in window)) {
-    ui.voiceSelect.disabled = true;
-    fillSelect(ui.voiceSelect, ["Default"]);
-    return;
+    // Force Piper or disable browser option?
+    // For now, let's just let it be.
   }
 
-  const refreshVoices = () => {
+  // Sync UI with initial state
+  if (ui.ttsEngineSelect) {
+    ui.ttsEngineSelect.value = runtime.ttsEngine;
+  }
+
+  refreshVoiceList();
+
+  // Chrome loads voices asynchronously, so we need this to update the list if valid
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      if (runtime.ttsEngine === "browser") {
+        refreshVoiceList();
+      }
+    };
+  }
+}
+
+function refreshVoiceList() {
+  ui.voiceSelect.innerHTML = "";
+  const engine = runtime.ttsEngine;
+
+  if (engine === "piper") {
+    PIPER_VOICES.forEach(voice => {
+      const option = document.createElement("option");
+      option.value = voice.id;
+      option.textContent = voice.name;
+      ui.voiceSelect.appendChild(option);
+    });
+    // Default to Amy
+    if (ui.voiceSelect.options.length > 0) {
+      ui.voiceSelect.value = PIPER_VOICES[0].id;
+    }
+  } else {
+    // Browser voices
     let voices = window.speechSynthesis.getVoices();
-    const previousValue = ui.voiceSelect.value;
 
     // Filter for US English only (handle en-US and en_US)
     voices = voices.filter(v => v.lang.replace('_', '-').startsWith('en-US'));
 
     // Define "High Quality" terms.
-    // Windows/Chrome: "natural", "google"
-    // iOS/Mac: "samantha", "alex", "ava", "allison", "siri", "enhanced"
     const highQualityTerms = ["natural", "google", "samantha", "alex", "ava", "allison", "siri", "enhanced"];
 
     // Filter for High Quality voices
     const naturalVoices = voices.filter(v => {
       const name = v.name.toLowerCase();
-      // Exclude "Fred" specifically as it's often robotic on Mac
       if (name.includes("fred")) return false;
       return highQualityTerms.some(term => name.includes(term));
     });
 
-    // If we have natural voices, use ONLY those. 
-    // If not, use all US voices (fallback for systems with no obvious "premium" keywords)
-    // The user asked to "not show non natural", but if that results in 0 voices, the app breaks.
-    // So we fallback, but we'll try to stick to the good ones.
     let displayVoices = naturalVoices.length > 0 ? naturalVoices : voices;
 
-    // Sort: Jenny/Guy (Windows), then Samantha/Alex (Apple), then alphabetical
     displayVoices.sort((a, b) => {
       const nameA = a.name.toLowerCase();
       const nameB = b.name.toLowerCase();
 
-      // Tier 1: Microsoft Natural (Jenny, Guy)
       const aTier1 = nameA.includes("jenny") || nameA.includes("guy");
       const bTier1 = nameB.includes("jenny") || nameB.includes("guy");
       if (aTier1 && !bTier1) return -1;
       if (!aTier1 && bTier1) return 1;
 
-      // Tier 2: Apple High Quality (Samantha, Alex)
       const aTier2 = nameA.includes("samantha") || nameA.includes("alex");
       const bTier2 = nameB.includes("samantha") || nameB.includes("alex");
       if (aTier2 && !bTier2) return -1;
@@ -736,8 +846,6 @@ function initVoices() {
 
       return nameA.localeCompare(nameB);
     });
-
-    ui.voiceSelect.innerHTML = "";
 
     if (displayVoices.length === 0) {
       const option = document.createElement("option");
@@ -753,19 +861,9 @@ function initVoices() {
       ui.voiceSelect.appendChild(option);
     }
 
-    // Try to restore selection, or pick 0 (Top ranked)
-    if (previousValue && displayVoices.some((v) => v.voiceURI === previousValue)) {
-      ui.voiceSelect.value = previousValue;
-    } else if (displayVoices.length > 0) {
+    if (displayVoices.length > 0) {
       ui.voiceSelect.value = displayVoices[0].voiceURI;
     }
-  };
-
-  refreshVoices();
-
-  // Chrome loads voices asynchronously, so we need this
-  if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = refreshVoices;
   }
 }
 
