@@ -440,6 +440,17 @@ function finalizeAttempt(result) {
   if (isCorrect) {
     setStatus("Correct!", "success");
     document.body.classList.add("celebrating");
+
+    // Confetti!
+    if (typeof confetti === "function") {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#2d8f5a', '#ffe76a', '#ffffff']
+      });
+    }
+
     // Celebrate for 2 seconds
     setTimeout(() => {
       document.body.classList.remove("celebrating");

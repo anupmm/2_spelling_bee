@@ -240,35 +240,7 @@ details summary {
 }
 
 /* Celebration Animation */
-@keyframes celebrate {
-  0% {
-    transform: scale(1);
-  }
-
-  20% {
-    transform: scale(1.1) rotate(3deg);
-  }
-
-  40% {
-    transform: scale(1.1) rotate(-3deg);
-  }
-
-  60% {
-    transform: scale(1.1) rotate(3deg);
-  }
-
-  80% {
-    transform: scale(1.1) rotate(-3deg);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-.celebrating .app {
-  animation: celebrate 1.5s ease-in-out;
-}
+/* Bounce removed, replaced with JS Confetti */
 
 .celebrating .reveal-spelling {
   color: var(--success);
