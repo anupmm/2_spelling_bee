@@ -115,6 +115,13 @@ function bindEvents() {
   ui.hearBtn.addEventListener("click", () => scoreCurrentWord("incorrect"));
   ui.correctBtn.addEventListener("click", () => scoreCurrentWord("correct"));
 
+  // Set initial state of history content based on toggle
+  if (ui.hideSpellingsToggle && ui.historyContent) {
+    if (ui.hideSpellingsToggle.checked) {
+      ui.historyContent.classList.add("hidden-spelling");
+    }
+  }
+
   if (ui.hideSpellingsToggle) {
     ui.hideSpellingsToggle.addEventListener("change", (e) => {
       if (ui.historyContent) {
@@ -807,22 +814,87 @@ function createHistorySection(title, count, statusClass, words) {
     const chip = document.createElement("div");
     chip.className = `word-chip ${statusClass}`;
 
+    // Add click-to-reveal logic for the chip itself
+    chip.onclick = (e) => {
+      // Don't trigger reveal if they clicked the audio button or a grading button
+      if (e.target.closest('button')) return;
+
+      if (ui.historyContent.classList.contains("hidden-spelling")) {
+        chip.classList.toggle("is-revealed");
+      }
+    };
+
     const audioBtn = document.createElement("button");
     audioBtn.className = "chip-audio-btn";
     audioBtn.innerHTML = "🔊";
-    audioBtn.onclick = () => speakText(word.displaySpelling, 1);
+    audioBtn.title = "Listen to word";
+    audioBtn.onclick = (e) => {
+      e.stopPropagation(); // prevent chip reveal
+      speakText(word.displaySpelling, 1);
+    };
 
     const textSpan = document.createElement("span");
     textSpan.className = "chip-word-text";
     textSpan.textContent = word.displaySpelling;
 
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "chip-actions";
+
+    const correctBtn = document.createElement("button");
+    correctBtn.className = "chip-btn correct";
+    correctBtn.innerHTML = "✅";
+    correctBtn.title = "I spelled it right";
+    correctBtn.onclick = (e) => {
+      e.stopPropagation();
+      scoreHistoryWord(word, "correct");
+    };
+
+    const wrongBtn = document.createElement("button");
+    wrongBtn.className = "chip-btn incorrect";
+    wrongBtn.innerHTML = "❌";
+    wrongBtn.title = "I missed it";
+    wrongBtn.onclick = (e) => {
+      e.stopPropagation();
+      scoreHistoryWord(word, "incorrect");
+    };
+
+    actionsDiv.appendChild(wrongBtn);
+    actionsDiv.appendChild(correctBtn);
+
     chip.appendChild(audioBtn);
     chip.appendChild(textSpan);
+    chip.appendChild(actionsDiv);
     grid.appendChild(chip);
   }
 
   section.appendChild(grid);
   return section;
+}
+
+function scoreHistoryWord(word, result) {
+  // We need to temporarily pretend this word is the "current" word so finalizeAttempt works
+  // We save the actual current state to restore it after
+  const savedCurrentWordId = runtime.currentWordId;
+  const savedStep = runtime.currentStep;
+  const savedLastWordId = runtime.lastWordId;
+
+  runtime.currentWordId = word.id;
+  runtime.currentStep = STEPS.REVEALED_NEEDS_SCORE; // bypass the "needs reveal" check in scoreCurrentWord
+
+  // Call the same finalize logic used by the main practice tab
+  finalizeAttempt(result);
+
+  // Restore state so we don't break the actual practice tab if they switch back
+  runtime.currentWordId = savedCurrentWordId;
+  runtime.currentStep = savedStep;
+
+  // Ensure we don't accidentally auto-advance the Practice tab when grading in History tab
+  // This happens because finalizeAttempt calls nextWord() on a timeout. 
+  // To handle this cleanly without rewriting finalizeAttempt, we'll just let the UI re-render.
+  // The side effects of finalizeAttempt (stats, history, queue) are what we want.
+
+  // Instantly re-render the history tab so the chip moves/updates
+  renderHistory();
 }
 
 function speakCurrentWord(rate) {

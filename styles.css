@@ -558,18 +558,57 @@ details summary {
   font-weight: 800;
   font-size: 1.1rem;
   word-break: break-word;
+}
+
+.hidden-spelling .word-chip:not(.is-revealed) .chip-word-text {
+  color: transparent;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  cursor: pointer;
+}
+
+.word-chip.is-revealed {
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--primary);
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.chip-actions {
+  display: none;
+  width: 100%;
+  margin-top: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.word-chip.is-revealed .chip-actions {
+  display: grid;
+}
+
+.chip-btn {
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
   transition: opacity 0.2s;
 }
 
-.hidden-spelling .chip-word-text {
-  opacity: 0.2;
-  filter: blur(4px);
-  user-select: none;
+.chip-btn:hover {
+  opacity: 0.8;
 }
 
-.hidden-spelling .word-chip:hover .chip-word-text {
-  opacity: 1;
-  filter: blur(0);
+.chip-btn.correct {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.chip-btn.incorrect {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .empty-state {
