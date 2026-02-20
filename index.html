@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Spelling Bee Practice</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 
 <body>
@@ -61,7 +61,16 @@
     <section id="tab-practice" class="panel tab-panel is-active">
       <div class="word-card">
         <div id="wordMeta" class="word-meta">Word #</div>
-        <div class="word-prompt">Tap play, then choose your smiley path.</div>
+        <div id="wordPromptContainer" class="word-prompt-container">
+          <div class="word-prompt" id="wordPromptLabel">Spell word</div>
+          <div class="sound-animation" id="soundAnimation">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+          </div>
+        </div>
         <div id="revealSpelling" class="reveal-spelling"></div>
       </div>
 
@@ -136,17 +145,19 @@
 
     <section id="tab-history" class="panel tab-panel history">
       <div class="history-top">
-        <h2>Recent Attempts</h2>
-        <label>
-          Show
-          <select id="historyFilter">
-            <option value="all">All</option>
-            <option value="correct">Correct</option>
-            <option value="incorrect">Incorrect</option>
-          </select>
-        </label>
+        <h2>Study Sheet</h2>
+        <div class="history-controls">
+          <label class="toggle-switch" title="Hide spellings to practice active recall">
+            <input type="checkbox" id="hideSpellingsToggle">
+            <span class="slider"></span>
+            Hide Spellings
+          </label>
+        </div>
       </div>
-      <ul id="historyList"></ul>
+
+      <div id="historyContent" class="history-content">
+        <!-- Content injected by JS: Need Review, Mastered groups -->
+      </div>
     </section>
   </main>
 

@@ -205,9 +205,79 @@ details summary {
   opacity: 0.8;
 }
 
-.word-prompt {
+.word-prompt-container {
   display: none;
-  /* Hide prompt to clean up UI */
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.word-prompt {
+  font-size: 1rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.6;
+}
+
+.sound-animation {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 20px;
+}
+
+.sound-animation .bar {
+  width: 5px;
+  height: 100%;
+  background-color: var(--primary);
+  border-radius: 3px;
+  animation: equalize 1s ease-in-out infinite;
+  opacity: 0.8;
+}
+
+.sound-animation .bar:nth-child(1) {
+  animation-delay: 0.0s;
+}
+
+.sound-animation .bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.sound-animation .bar:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.sound-animation .bar:nth-child(4) {
+  animation-delay: 0.1s;
+}
+
+.sound-animation .bar:nth-child(5) {
+  animation-delay: 0.3s;
+}
+
+@keyframes equalize {
+
+  0%,
+  100% {
+    height: 30%;
+  }
+
+  50% {
+    height: 100%;
+  }
+}
+
+.is-speaking .word-prompt {
+  display: none;
+}
+
+.is-speaking .sound-animation {
+  display: flex;
 }
 
 .reveal-spelling {
@@ -366,19 +436,147 @@ details summary {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 20px;
 }
 
-#historyList {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 7px;
+.history-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
-.result-correct {
-  color: #1f6942;
+/* Toggle Switch Style */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  display: none;
+}
+
+.toggle-switch .slider {
+  width: 44px;
+  height: 24px;
+  background-color: var(--muted);
+  border-radius: 12px;
+  position: relative;
+  transition: 0.3s;
+}
+
+.toggle-switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: white;
+  top: 3px;
+  left: 3px;
+  transition: 0.3s;
+}
+
+.toggle-switch input:checked+.slider {
+  background-color: var(--primary);
+}
+
+.toggle-switch input:checked+.slider::before {
+  transform: translateX(20px);
+}
+
+.history-section {
+  margin-bottom: 24px;
+}
+
+.history-section-title {
+  font-size: 1.2rem;
   font-weight: 800;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.word-chip {
+  background: var(--card);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.05);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.word-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+.word-chip.needs-review {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.word-chip.mastered {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.chip-audio-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  line-height: 1;
+  transition: background 0.2s;
+}
+
+.chip-audio-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.chip-word-text {
+  font-weight: 800;
+  font-size: 1.1rem;
+  word-break: break-word;
+  transition: opacity 0.2s;
+}
+
+.hidden-spelling .chip-word-text {
+  opacity: 0.2;
+  filter: blur(4px);
+  user-select: none;
+}
+
+.hidden-spelling .word-chip:hover .chip-word-text {
+  opacity: 1;
+  filter: blur(0);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  font-style: italic;
 }
 
 .result-incorrect {

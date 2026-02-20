@@ -84,7 +84,8 @@ function cacheUi() {
   ui.remainingCount = document.getElementById("remainingCount");
 
   ui.historyFilter = document.getElementById("historyFilter");
-  ui.historyList = document.getElementById("historyList");
+  ui.historyContent = document.getElementById("historyContent");
+  ui.hideSpellingsToggle = document.getElementById("hideSpellingsToggle");
 }
 
 function bindEvents() {
@@ -114,7 +115,17 @@ function bindEvents() {
   ui.hearBtn.addEventListener("click", () => scoreCurrentWord("incorrect"));
   ui.correctBtn.addEventListener("click", () => scoreCurrentWord("correct"));
 
-  ui.historyFilter.addEventListener("change", renderHistory);
+  if (ui.hideSpellingsToggle) {
+    ui.hideSpellingsToggle.addEventListener("change", (e) => {
+      if (ui.historyContent) {
+        if (e.target.checked) {
+          ui.historyContent.classList.add("hidden-spelling");
+        } else {
+          ui.historyContent.classList.remove("hidden-spelling");
+        }
+      }
+    });
+  }
 }
 
 async function initializeApp() {
@@ -352,21 +363,39 @@ function pickNextWord() {
   const askedIds = getAskedIds(filterKey);
   const askedSet = new Set(askedIds);
   const remediationQueue = getRemediationQueue(filterKey);
-  const askedCount = askedIds.length;
 
-  const dueRemediation = remediationQueue.filter(
-    (item) => item.dueAfterAskedCount <= askedCount && item.wordId !== runtime.lastWordId
+  // 1. Identify words that are in the review queue (meaning they need remediation)
+  // We exclude the very last word asked to avoid immediate repetition
+  const availableForReview = remediationQueue.filter(
+    (item) => item.wordId !== runtime.lastWordId
   );
 
-  if (dueRemediation.length) {
-    const chosen = pickRandom(dueRemediation);
-    removeRemediationItem(filterKey, chosen.wordId, chosen.dueAfterAskedCount);
-    saveStore();
-    return { id: chosen.wordId };
+  // 2. Identify brand novel words that have never been asked
+  const unseen = runtime.filteredWordIds.filter(
+    (id) => !askedSet.has(id) && id !== runtime.lastWordId
+  );
+
+  // 3. Decide whether to ask a New Word or Review Word based on a 90/10 split
+  // If there are words to review AND new words available:
+  if (availableForReview.length > 0 && unseen.length > 0) {
+    const roll = Math.random();
+    if (roll < 0.10) {
+      // 10% chance to review
+      const chosen = pickRandom(availableForReview);
+      return { id: chosen.wordId };
+    } else {
+      // 90% chance for a new word
+      const chosenId = pickRandom(unseen);
+      askedSet.add(chosenId);
+      store.askedHistoryByFilterKey[filterKey] = Array.from(askedSet);
+      saveStore();
+      return { id: chosenId };
+    }
   }
 
-  const unseen = runtime.filteredWordIds.filter((id) => !askedSet.has(id) && id !== runtime.lastWordId);
-  if (unseen.length) {
+  // 4. Fallbacks if one of the pools is empty
+  if (unseen.length > 0) {
+    // Only new words available (or review queue was empty)
     const chosenId = pickRandom(unseen);
     askedSet.add(chosenId);
     store.askedHistoryByFilterKey[filterKey] = Array.from(askedSet);
@@ -374,11 +403,17 @@ function pickNextWord() {
     return { id: chosenId };
   }
 
-  const anyRemediation = remediationQueue.filter((item) => item.wordId !== runtime.lastWordId);
-  if (anyRemediation.length) {
+  if (availableForReview.length > 0) {
+    // Only review words available (we finished the new words list)
+    const chosen = pickRandom(availableForReview);
+    return { id: chosen.wordId };
+  }
+
+  // 5. If absolutely nothing else, we might be forced to repeat the last word, 
+  // or the list is completely done.
+  const anyRemediation = remediationQueue;
+  if (anyRemediation.length > 0) {
     const chosen = pickRandom(anyRemediation);
-    removeRemediationItem(filterKey, chosen.wordId, chosen.dueAfterAskedCount);
-    saveStore();
     return { id: chosen.wordId };
   }
 
@@ -413,7 +448,13 @@ function finalizeAttempt(result) {
 
   if (!isCorrect) {
     scheduleRemediation(word.id);
+  } else {
+    // If they got it right, log a successful attempt in the review queue
+    handleCorrectReview(word.id);
   }
+
+  // Ensure lastWordId is updated so we don't repeat immediately
+  runtime.lastWordId = word.id;
 
   const attempt = {
     attemptId: createAttemptId(),
@@ -441,6 +482,9 @@ function finalizeAttempt(result) {
     setStatus("Correct!", "success");
     document.body.classList.add("celebrating");
 
+    // Play Ding Sound
+    playCorrectSound();
+
     // Confetti!
     if (typeof confetti === "function") {
       confetti({
@@ -467,21 +511,37 @@ function finalizeAttempt(result) {
 
 function scheduleRemediation(wordId) {
   const filterKey = getCurrentFilterKey();
-  const askedCount = getAskedIds(filterKey).length;
-  const dueAfterAskedCount = askedCount + 5;
   const queue = getRemediationQueue(filterKey);
   const existing = queue.find((item) => item.wordId === wordId);
 
   if (existing) {
-    existing.dueAfterAskedCount = Math.min(existing.dueAfterAskedCount, dueAfterAskedCount);
+    // Reset their successful attempts back to 0 if they get it wrong again
+    existing.consecutiveCorrect = 0;
   } else {
-    queue.push({ wordId, dueAfterAskedCount });
+    // They need 2 consecutive correct attempts to graduate
+    queue.push({ wordId, consecutiveCorrect: 0 });
   }
 }
 
-function removeRemediationItem(filterKey, wordId, dueAfterAskedCount) {
+function handleCorrectReview(wordId) {
+  const filterKey = getCurrentFilterKey();
   const queue = getRemediationQueue(filterKey);
-  const index = queue.findIndex((item) => item.wordId === wordId && item.dueAfterAskedCount === dueAfterAskedCount);
+  const index = queue.findIndex((item) => item.wordId === wordId);
+
+  if (index !== -1) {
+    const item = queue[index];
+    item.consecutiveCorrect = (item.consecutiveCorrect || 0) + 1;
+
+    // Graduate after 2 consecutive correct answers
+    if (item.consecutiveCorrect >= 2) {
+      queue.splice(index, 1);
+    }
+  }
+}
+
+function removeRemediationItem(filterKey, wordId) {
+  const queue = getRemediationQueue(filterKey);
+  const index = queue.findIndex((item) => item.wordId === wordId);
   if (index !== -1) {
     queue.splice(index, 1);
   }
@@ -562,6 +622,15 @@ function renderUiState() {
 
   setActiveStage(step);
 
+  const promptContainer = document.getElementById("wordPromptContainer");
+  if (promptContainer) {
+    if (step === STEPS.SPOKEN_WAIT_CHOICE) {
+      promptContainer.style.display = "flex";
+    } else {
+      promptContainer.style.display = "none";
+    }
+  }
+
   // Toggle audio controls visibility within stageListen
   // The audio-box is inside stageListen. 
   // We want audio controls visible during SPOKEN_WAIT_CHOICE.
@@ -577,6 +646,15 @@ function renderUiState() {
   // If the user sees options, maybe step IS REVEALED_NEEDS_SCORE on load?
   // loading from localStorage?
 
+  if (step === STEPS.IDLE) {
+    ui.wordMeta.textContent = "Word #";
+  } else {
+    const word = getCurrentWord();
+    if (word) {
+      ui.wordMeta.textContent = `Word #${word.id}`;
+    }
+  }
+
   if (step === STEPS.REVEALED_NEEDS_SCORE) {
     const word = getCurrentWord();
     if (word) {
@@ -591,6 +669,28 @@ function renderUiState() {
     // If we are in SPOKEN state, we want to hide spelling.
     ui.revealSpelling.textContent = "";
   }
+}
+
+function playCorrectSound() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+  osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // C6
+
+  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.5);
 }
 
 function setActiveStage(step) {
@@ -638,45 +738,91 @@ function renderStats() {
 }
 
 function renderHistory() {
-  const filterValue = ui.historyFilter.value;
-  let entries = store.practiceLog.slice();
+  if (!ui.historyContent) return;
+  ui.historyContent.innerHTML = "";
 
-  if (filterValue === "correct") {
-    entries = entries.filter((entry) => entry.result === "correct");
-  } else if (filterValue === "incorrect") {
-    entries = entries.filter((entry) => entry.result === "incorrect");
-  }
+  const filterKey = getCurrentFilterKey();
+  const queue = getRemediationQueue(filterKey);
+  const askedIds = getAskedIds(filterKey);
 
-  entries = entries.slice(-20).reverse();
-  ui.historyList.innerHTML = "";
+  // Find words that need review
+  const needsReviewIds = new Set(queue.map(item => item.wordId));
+  const reviewWords = Array.from(needsReviewIds)
+    .map(id => runtime.wordById.get(id))
+    .filter(Boolean);
 
-  if (!entries.length) {
-    const empty = document.createElement("li");
-    empty.textContent = "No attempts yet.";
-    ui.historyList.appendChild(empty);
+  // Find words that are mastered (asked, but not in review queue)
+  const masteredIds = askedIds.filter(id => !needsReviewIds.has(id));
+  const masteredWords = masteredIds
+    .map(id => runtime.wordById.get(id))
+    .filter(Boolean)
+    // Reverse so most recently mastered are at top
+    .reverse();
+
+  if (reviewWords.length === 0 && masteredWords.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "No attempts yet. Start practicing!";
+    ui.historyContent.appendChild(empty);
     return;
   }
 
-  for (const entry of entries) {
-    const item = document.createElement("li");
-    const resultClass = entry.result === "correct" ? "result-correct" : "result-incorrect";
-    const dateLabel = formatTimestamp(entry.timestamp);
-    const details = document.createTextNode(`${dateLabel} - #${entry.wordId} ${entry.displaySpelling} - `);
-    const resultSpan = document.createElement("span");
-    resultSpan.className = resultClass;
-    resultSpan.textContent = entry.result;
-    item.appendChild(details);
-    item.appendChild(resultSpan);
-    ui.historyList.appendChild(item);
+  // Render "Needs Review" group
+  if (reviewWords.length > 0) {
+    const section = createHistorySection("Needs Review", reviewWords.length, "needs-review", reviewWords);
+    ui.historyContent.appendChild(section);
+  }
+
+  // Render "Mastered" group
+  if (masteredWords.length > 0) {
+    const section = createHistorySection("Mastered", masteredWords.length, "mastered", masteredWords);
+    ui.historyContent.appendChild(section);
   }
 }
 
-function formatTimestamp(isoTimestamp) {
-  const date = new Date(isoTimestamp);
-  if (Number.isNaN(date.getTime())) {
-    return isoTimestamp;
+function createHistorySection(title, count, statusClass, words) {
+  const section = document.createElement("div");
+  section.className = "history-section";
+
+  const header = document.createElement("div");
+  header.className = "history-section-title";
+
+  const titleSpan = document.createElement("span");
+  titleSpan.textContent = title;
+
+  const countBadge = document.createElement("span");
+  countBadge.textContent = count;
+  countBadge.style.fontSize = "0.9rem";
+  countBadge.style.color = "var(--muted)";
+  countBadge.style.fontWeight = "normal";
+
+  header.appendChild(titleSpan);
+  header.appendChild(countBadge);
+  section.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "history-grid";
+
+  for (const word of words) {
+    const chip = document.createElement("div");
+    chip.className = `word-chip ${statusClass}`;
+
+    const audioBtn = document.createElement("button");
+    audioBtn.className = "chip-audio-btn";
+    audioBtn.innerHTML = "🔊";
+    audioBtn.onclick = () => speakText(word.displaySpelling, 1);
+
+    const textSpan = document.createElement("span");
+    textSpan.className = "chip-word-text";
+    textSpan.textContent = word.displaySpelling;
+
+    chip.appendChild(audioBtn);
+    chip.appendChild(textSpan);
+    grid.appendChild(chip);
   }
-  return date.toLocaleString();
+
+  section.appendChild(grid);
+  return section;
 }
 
 function speakCurrentWord(rate) {
@@ -688,10 +834,23 @@ function speakCurrentWord(rate) {
 }
 
 async function speakText(text, rate) {
-  if (runtime.ttsEngine === "piper") {
-    await speakWithPiper(text);
+  setSpeakingState(true);
+  try {
+    if (runtime.ttsEngine === "piper") {
+      await speakWithPiper(text);
+    } else {
+      await speakWithBrowser(text, rate);
+    }
+  } finally {
+    setSpeakingState(false);
+  }
+}
+
+function setSpeakingState(isSpeaking) {
+  if (isSpeaking) {
+    document.body.classList.add("is-speaking");
   } else {
-    speakWithBrowser(text, rate);
+    document.body.classList.remove("is-speaking");
   }
 }
 
@@ -758,28 +917,59 @@ async function speakWithPiper(text) {
 }
 
 function speakWithBrowser(text, rate) {
-  if (!("speechSynthesis" in window)) {
-    setStatus("This browser does not support speech audio.", "error");
-    return;
-  }
-
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = rate;
-
-  const selectedVoiceUri = ui.voiceSelect.value;
-  if (selectedVoiceUri) {
-    const matchingVoice = window.speechSynthesis.getVoices().find((voice) => voice.voiceURI === selectedVoiceUri);
-    if (matchingVoice) {
-      utterance.voice = matchingVoice;
+  return new Promise((resolve) => {
+    if (!("speechSynthesis" in window)) {
+      setStatus("This browser does not support speech audio.", "error");
+      resolve();
+      return;
     }
-  }
 
-  utterance.onerror = () => {
-    setStatus("Audio failed. You can still use the revealed spelling.", "error");
-  };
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
 
-  window.speechSynthesis.speak(utterance);
+    // A small timeout allows the browser to clear its speech queue properly
+    // This fixes a known bug in Safari and Edge where speak() immediately after cancel() is ignored
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = rate;
+
+      const selectedVoiceUri = ui.voiceSelect.value;
+      if (selectedVoiceUri) {
+        const matchingVoice = window.speechSynthesis.getVoices().find((voice) => voice.voiceURI === selectedVoiceUri);
+        if (matchingVoice) {
+          utterance.voice = matchingVoice;
+        }
+      }
+
+      // Hack for Chromium/Edge: 
+      // Keep a reference to the utterance globally so it doesn't get aggressively garbage collected
+      // before the onend event fires.
+      window._activeSpeechUtterance = utterance;
+
+      let hasResolved = false;
+      const cleanupAndResolve = () => {
+        if (!hasResolved) {
+          hasResolved = true;
+          window._activeSpeechUtterance = null;
+          resolve();
+        }
+      };
+
+      utterance.onend = cleanupAndResolve;
+
+      utterance.onerror = (e) => {
+        // Some browsers fire onerror when cancel() is called. We should just resolve.
+        console.warn("SpeechSynthesis error:", e);
+        cleanupAndResolve();
+      };
+
+      // Fallback: Just in case onend never fires (Web Speech API can be buggy)
+      // Resolve after 5 seconds to ensure animation doesn't get stuck forever
+      setTimeout(cleanupAndResolve, 5000);
+
+      window.speechSynthesis.speak(utterance);
+    }, 50);
+  });
 }
 
 // Piper Voices Data
