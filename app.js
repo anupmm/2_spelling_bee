@@ -59,6 +59,7 @@ function cacheUi() {
 
   ui.wordMeta = document.getElementById("wordMeta");
   ui.revealSpelling = document.getElementById("revealSpelling");
+  ui.secondarySpelling = document.getElementById("secondarySpelling");
   ui.revealBtn = document.getElementById("revealBtn");
 
   ui.playBtn = document.getElementById("playBtn");
@@ -219,6 +220,20 @@ function parseWordCsv(csvText) {
       continue;
     }
 
+    // Handle the primary variant (the first one) to extract potential pronunciation brackets
+    const primaryVariant = variants[0];
+    let displaySpelling = primaryVariant;
+    let pronunciation = primaryVariant;
+
+    // Look for bracket syntax: "Weren't [were not]"
+    const bracketMatch = primaryVariant.match(/^(.*?)\s*\[(.*?)\]\s*$/);
+    let fullFormDisplay = "";
+    if (bracketMatch) {
+      displaySpelling = bracketMatch[1].trim(); // "Weren't"
+      fullFormDisplay = bracketMatch[2].trim(); // "were not"
+      pronunciation = fullFormDisplay;
+    }
+
     const id = words.length + 1;
     words.push({
       id,
@@ -226,7 +241,9 @@ function parseWordCsv(csvText) {
       level,
       rawWords,
       variants,
-      displaySpelling: variants[0],
+      displaySpelling,
+      fullFormDisplay,
+      pronunciation,
     });
   }
 
@@ -666,15 +683,21 @@ function renderUiState() {
     const word = getCurrentWord();
     if (word) {
       if (word.variants.length > 1) {
-        ui.revealSpelling.textContent = `${word.displaySpelling} (${word.variants.join(" / ")})`;
+        ui.revealSpelling.textContent = word.displaySpelling;
+        ui.secondarySpelling.textContent = `(${word.variants.join(" / ")})`;
+      } else if (word.fullFormDisplay) {
+        ui.revealSpelling.textContent = word.displaySpelling;
+        ui.secondarySpelling.textContent = `(${word.fullFormDisplay})`;
       } else {
         ui.revealSpelling.textContent = word.displaySpelling;
+        ui.secondarySpelling.textContent = "";
       }
     }
   } else {
     // Only clear if we are NOT in REVEALED state. 
     // If we are in SPOKEN state, we want to hide spelling.
     ui.revealSpelling.textContent = "";
+    ui.secondarySpelling.textContent = "";
   }
 }
 
@@ -830,7 +853,7 @@ function createHistorySection(title, count, statusClass, words) {
     audioBtn.title = "Listen to word";
     audioBtn.onclick = (e) => {
       e.stopPropagation(); // prevent chip reveal
-      speakText(word.displaySpelling, 1);
+      speakText(word.pronunciation || word.displaySpelling, 1);
     };
 
     const textSpan = document.createElement("span");
@@ -902,7 +925,7 @@ function speakCurrentWord(rate) {
   if (!word) {
     return;
   }
-  speakText(word.displaySpelling, rate);
+  speakText(word.pronunciation || word.displaySpelling, rate);
 }
 
 async function speakText(text, rate) {

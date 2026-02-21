@@ -304,6 +304,17 @@ details summary {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.secondary-spelling {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  opacity: 0.8;
+  text-shadow: none !important;
+  letter-spacing: normal;
+  margin-top: 8px;
+}
+
 .result-correct {
   color: #1f6942;
   font-weight: 800;
@@ -558,6 +569,14 @@ details summary {
   font-weight: 800;
   font-size: 1.1rem;
   word-break: break-word;
+}
+
+.chip-secondary-text {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 2px;
 }
 
 .hidden-spelling .word-chip:not(.is-revealed) .chip-word-text {
